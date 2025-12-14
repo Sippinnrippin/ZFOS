@@ -1,2 +1,2 @@
-# ZFOS.github.io
+# ZFOS
 Open projects for everyone
