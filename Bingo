@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Movie Bingo</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const MovieBingo = () => {
+          const defaultSquares = [
+            "Someone says 'I have a bad feeling about this'",
+            "Character eats pizza",
+            "Car chase scene",
+            "Dramatic rain scene",
+            "Wilhelm scream",
+            "Someone running in slow motion",
+            "Explosion without looking back",
+            "Montage with upbeat music",
+            "FREE SPACE",
+            "Phone dies at crucial moment",
+            "False jump scare",
+            "Character wakes from nightmare",
+            "Coffee shop meet-cute",
+            "Hacking completed in 30 seconds",
+            "'We've got company'",
+            "Breaking glass",
+            "Heroic sacrifice",
+            "Post-credits scene",
+            "Someone checks behind shower curtain",
+            "Protagonist catches falling object",
+            "Mirror reveals someone behind",
+            "One last job before retirement",
+            "Clumsy but lovable character",
+            "Villain monologue",
+            "Countdown timer"
+          ];
+
+          const [title, setTitle] = useState("🎬 Movie Bingo 🎬");
+          const [bingoSquares, setBingoSquares] = useState(defaultSquares);
+          const [marked, setMarked] = useState(new Array(25).fill(false));
+          const [winningLine, setWinningLine] = useState(null);
+          const [isEditing, setIsEditing] = useState(false);
+          const [editTitle, setEditTitle] = useState(title);
+          const [editSquares, setEditSquares] = useState([...bingoSquares]);
+          const [backgroundImage, setBackgroundImage] = useState("");
+          const [editBackgroundImage, setEditBackgroundImage] = useState("");
+          const [gridSize, setGridSize] = useState(5);
+          const [editGridSize, setEditGridSize] = useState(5);
+          const [centerSquareColor, setCenterSquareColor] = useState("#fbbf24");
+          const [editCenterSquareColor, setEditCenterSquareColor] = useState("#fbbf24");
+          const [showImportExport, setShowImportExport] = useState(false);
+
+          // Load from localStorage on mount
+          useEffect(() => {
+            try {
+              const saved = localStorage.getItem('bingo-config');
+              if (saved) {
+                const config = JSON.parse(saved);
+                setTitle(config.title);
+                setBingoSquares(config.squares);
+                setBackgroundImage(config.background || "");
+                setGridSize(config.gridSize);
+                setCenterSquareColor(config.centerColor);
+                setMarked(new Array(config.squares.length).fill(false));
+              }
+            } catch (error) {
+              console.log('No saved data found, using defaults');
+            }
+          }, []);
+
+          const toggleSquare = (index) => {
+            const newMarked = [...marked];
+            newMarked[index] = !newMarked[index];
+            setMarked(newMarked);
+            checkForBingo(newMarked);
+          };
+
+          const checkForBingo = (currentMarked) => {
+            const size = gridSize;
+            
+            for (let i = 0; i < size; i++) {
+              if (currentMarked.slice(i * size, i * size + size).every(val => val)) {
+                setWinningLine(`row-${i}`);
+                return;
+              }
+            }
+
+            for (let i = 0; i < size; i++) {
+              let colComplete = true;
+              for (let row = 0; row < size; row++) {
+                if (!currentMarked[row * size + i]) {
+                  colComplete = false;
+                  break;
+                }
+              }
+              if (colComplete) {
+                setWinningLine(`col-${i}`);
+                return;
+              }
+            }
+
+            let diag1Complete = true;
+            for (let i = 0; i < size; i++) {
+              if (!currentMarked[i * size + i]) {
+                diag1Complete = false;
+                break;
+              }
+            }
+            if (diag1Complete) {
+              setWinningLine('diag-1');
+              return;
+            }
+
+            let diag2Complete = true;
+            for (let i = 0; i < size; i++) {
+              if (!currentMarked[i * size + (size - 1 - i)]) {
+                diag2Complete = false;
+                break;
+              }
+            }
+            if (diag2Complete) {
+              setWinningLine('diag-2');
+              return;
+            }
+
+            setWinningLine(null);
+          };
+
+          const resetBoard = () => {
+            setMarked(new Array(gridSize * gridSize).fill(false));
+            setWinningLine(null);
+          };
+
+          const startEditing = () => {
+            setEditTitle(title);
+            setEditSquares([...bingoSquares]);
+            setEditBackgroundImage(backgroundImage);
+            setEditGridSize(gridSize);
+            setEditCenterSquareColor(centerSquareColor);
+            setIsEditing(true);
+          };
+
+          const saveEdits = () => {
+            const totalSquares = editGridSize * editGridSize;
+            const newSquares = [...editSquares];
+            
+            if (newSquares.length < totalSquares) {
+              const centerIndex = Math.floor(totalSquares / 2);
+              while (newSquares.length < totalSquares) {
+                if (newSquares.length === centerIndex && editGridSize % 2 === 1) {
+                  newSquares.push("FREE SPACE");
+                } else {
+                  newSquares.push(`Square ${newSquares.length + 1}`);
+                }
+              }
+            } else if (newSquares.length > totalSquares) {
+              newSquares.splice(totalSquares);
+            }
+            
+            setTitle(editTitle);
+            setBingoSquares(newSquares);
+            setBackgroundImage(editBackgroundImage);
+            setGridSize(editGridSize);
+            setCenterSquareColor(editCenterSquareColor);
+            setMarked(new Array(totalSquares).fill(false));
+            setIsEditing(false);
+            setWinningLine(null);
+
+            const config = {
+              title: editTitle,
+              squares: newSquares,
+              background: editBackgroundImage,
+              gridSize: editGridSize,
+              centerColor: editCenterSquareColor
+            };
+            localStorage.setItem('bingo-config', JSON.stringify(config));
+          };
+
+          const cancelEdits = () => {
+            setEditTitle(title);
+            setEditSquares([...bingoSquares]);
+            setEditBackgroundImage(backgroundImage);
+            setEditGridSize(gridSize);
+            setEditCenterSquareColor(centerSquareColor);
+            setIsEditing(false);
+          };
+
+          const updateSquare = (index, value) => {
+            const newSquares = [...editSquares];
+            newSquares[index] = value;
+            setEditSquares(newSquares);
+          };
+
+          const handleGridSizeChange = (newSize) => {
+            const size = parseInt(newSize);
+            if (size < 3 || size > 10) return;
+            
+            setEditGridSize(size);
+            const totalSquares = size * size;
+            const newSquares = [...editSquares];
+            const centerIndex = Math.floor(totalSquares / 2);
+            
+            while (newSquares.length < totalSquares) {
+              if (newSquares.length === centerIndex && size % 2 === 1) {
+                newSquares.push("FREE SPACE");
+              } else {
+                newSquares.push(`Square ${newSquares.length + 1}`);
+              }
+            }
+            if (newSquares.length > totalSquares) {
+              newSquares.splice(totalSquares);
+            }
+            
+            setEditSquares(newSquares);
+          };
+
+          const getCenterIndex = () => {
+            return Math.floor((gridSize * gridSize) / 2);
+          };
+
+          const exportConfig = () => {
+            const config = {
+              title,
+              squares: bingoSquares,
+              background: backgroundImage,
+              gridSize,
+              centerColor: centerSquareColor
+            };
+            
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'bingo-config.json';
+            link.click();
+            URL.revokeObjectURL(url);
+          };
+
+          const importConfig = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const config = JSON.parse(e.target.result);
+                setTitle(config.title);
+                setBingoSquares(config.squares);
+                setBackgroundImage(config.background || "");
+                setGridSize(config.gridSize);
+                setCenterSquareColor(config.centerColor);
+                setMarked(new Array(config.squares.length).fill(false));
+                localStorage.setItem('bingo-config', JSON.stringify(config));
+                alert('Configuration imported successfully!');
+                setShowImportExport(false);
+              } catch (error) {
+                alert('Error importing configuration. Please check the file.');
+              }
+            };
+            reader.readAsText(file);
+          };
+
+          // Edit mode view
+          if (isEditing) {
+            return (
+              <div 
+                className="min-h-screen p-4"
+                style={{
+                  backgroundImage: editBackgroundImage ? `url(${editBackgroundImage})` : 'linear-gradient(to bottom right, rgb(88, 28, 135), rgb(30, 58, 138), rgb(49, 46, 129))',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundAttachment: 'fixed'
+                }}
+              >
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-4">
+                    <h2 className="text-2xl font-bold text-white mb-4">Edit Bingo Card</h2>
+                    
+                    <label className="block text-white mb-2 font-medium">Title:</label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full p-3 rounded-lg mb-4 bg-white/90 text-gray-800"
+                      placeholder="Enter title..."
+                    />
+
+                    <label className="block text-white mb-2 font-medium">Background Image URL:</label>
+                    <input
+                      type="text"
+                      value={editBackgroundImage}
+                      onChange={(e) => setEditBackgroundImage(e.target.value)}
+                      className="w-full p-3 rounded-lg mb-4 bg-white/90 text-gray-800"
+                      placeholder="Enter image URL or leave blank for default"
+                    />
+
+                    <label className="block text-white mb-2 font-medium">Grid Size (3x3 to 10x10):</label>
+                    <input
+                      type="number"
+                      min="3"
+                      max="10"
+                      value={editGridSize}
+                      onChange={(e) => handleGridSizeChange(e.target.value)}
+                      className="w-full p-3 rounded-lg mb-4 bg-white/90 text-gray-800"
+                    />
+                    <p className="text-white/70 text-sm mb-4">Total squares: {editGridSize * editGridSize}</p>
+
+                    <label className="block text-white mb-2 font-medium">Center Square Color:</label>
+                    <div className="flex gap-2 mb-4">
+                      <input
+                        type="color"
+                        value={editCenterSquareColor}
+                        onChange={(e) => setEditCenterSquareColor(e.target.value)}
+                        className="h-12 w-20 rounded-lg cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={editCenterSquareColor}
+                        onChange={(e) => setEditCenterSquareColor(e.target.value)}
+                        className="flex-1 p-3 rounded-lg bg-white/90 text-gray-800"
+                        placeholder="#fbbf24"
+                      />
+                    </div>
+
+                    <label className="block text-white mb-2 font-medium">Bingo Squares:</label>
+                    <div className="grid grid-cols-1 gap-2 mb-4 max-h-96 overflow-y-auto">
+                      {editSquares.map((square, index) => {
+                        const centerIndex = Math.floor((editGridSize * editGridSize) / 2);
+                        const isCenterSquare = index === centerIndex && editGridSize % 2 === 1;
+                        
+                        return (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-white font-medium w-8">{index + 1}.</span>
+                            <input
+                              type="text"
+                              value={square}
+                              onChange={(e) => updateSquare(index, e.target.value)}
+                              className="flex-1 p-2 rounded-lg bg-white/90 text-gray-800"
+                              placeholder={isCenterSquare ? "FREE SPACE" : `Square ${index + 1}`}
+                              disabled={isCenterSquare}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={saveEdits}
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={cancelEdits}
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Main game view
+          return (
+            <div 
+              className="min-h-screen p-4 flex items-center justify-center"
+              style={{
+                backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'linear-gradient(to bottom right, rgb(88, 28, 135), rgb(30, 58, 138), rgb(49, 46, 129))',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed'
+              }}
+            >
+              <div className="max-w-4xl w-full">
+                <div className="text-center mb-6">
+                  <h1 className="text-4xl font-bold text-white mb-2">{title}</h1>
+                  <p className="text-gray-300 mb-4">Click squares to mark them off!</p>
+                  <div className="flex gap-3 justify-center flex-wrap">
+                    <button
+                      onClick={resetBoard}
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      🔄 Reset Board
+                    </button>
+                    <button
+                      onClick={startEditing}
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      ✏️ Edit Card
+                    </button>
+                    <button
+                      onClick={exportConfig}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      📥 Export
+                    </button>
+                    <button
+                      onClick={() => setShowImportExport(true)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      📤 Import
+                    </button>
+                  </div>
+                </div>
+
+                {winningLine && (
+                  <div className="bg-yellow-400 text-gray-900 text-center py-3 px-4 rounded-lg mb-4 font-bold text-xl animate-pulse">
+                    🎉 BINGO! 🎉
+                  </div>
+                )}
+
+                <div 
+                  className="grid gap-2 bg-white/10 p-4 rounded-xl backdrop-blur-sm"
+                  style={{ 
+                    gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` 
+                  }}
+                >
+                  {bingoSquares.map((square, index) => {
+                    const centerIndex = getCenterIndex();
+                    const isCenterSquare = index === centerIndex && gridSize % 2 === 1;
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => toggleSquare(index)}
+                        className="aspect-square p-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 transform hover:scale-105 bg-white/90 text-gray-800 hover:bg-white flex items-center justify-center text-center relative"
+                        style={{ 
+                          backgroundColor: isCenterSquare ? centerSquareColor : undefined,
+                          fontWeight: isCenterSquare ? 'bold' : 'normal'
+                        }}
+                      >
+                        {square}
+                        {marked[index] && !isCenterSquare && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <svg className="w-full h-full" viewBox="0 0 100 100">
+                              <defs>
+                                <filter id="brush">
+                                  <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" result="noise"/>
+                                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
+                                </filter>
+                              </defs>
+                              <path 
+                                d="M 15 12 Q 20 15, 25 20 T 45 40 T 65 60 T 85 85" 
+                                stroke="#dc2626" 
+                                strokeWidth="10" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                                fill="none"
+                                opacity="0.9"
+                                style={{ filter: 'url(#brush)' }}
+                              />
+                              <path 
+                                d="M 85 15 Q 80 18, 75 23 T 55 43 T 35 63 T 15 88" 
+                                stroke="#dc2626" 
+                                strokeWidth="10" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                                fill="none"
+                                opacity="0.9"
+                                style={{ filter: 'url(#brush)' }}
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 text-center text-gray-300 text-sm">
+                  Marked: {marked.filter(Boolean).length} / {gridSize * gridSize}
+                </div>
+
+                {showImportExport && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">Import Configuration</h3>
+                      <p className="text-gray-600 mb-4">Select a JSON file to import:</p>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={importConfig}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+                      />
+                      <button
+                        onClick={() => setShowImportExport(false)}
+                        className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<MovieBingo />, document.getElementById('root'));
+    </script>
+</body>
+</html>
