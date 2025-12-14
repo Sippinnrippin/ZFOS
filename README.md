@@ -1,2 +1,2 @@
-# ZFOS
-Open projects for everyone
+# ZFOS Bingo
+
