@@ -19,14 +19,7 @@
         const { useState, useEffect } = React;
 
         const MovieBingo = () => {
-          const defaultSquares = [
-            "", "", "", "", "",
-            "", "", "", "",
-            "FREE SPACE",
-            "", "", "", "", "",
-            "", "", "", "", "",
-            "", "", "", "", ""
-          ];
+          const defaultSquares = Array(25).fill("").map((_, i) => i === 12 ? "FREE SPACE" : "");
 
           const [title, setTitle] = useState("🎬 Movie Bingo 🎬");
           const [bingoSquares, setBingoSquares] = useState(defaultSquares);
